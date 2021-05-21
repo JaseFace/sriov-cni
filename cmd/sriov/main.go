@@ -138,7 +138,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				return ipam.ConfigureIface(args.IfName, newResult)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("cmdDel() failed to delete IPAM data %v: %q", args, err)
 			}
 		}
 		result = newResult
@@ -162,7 +162,7 @@ func cmdDel(args *skel.CmdArgs) error {
 		// Return nil when LoadConfFromCache fails since the rest
 		// of cmdDel() code relies on netconf as input argument
 		// and there is no meaning to continue.
-		return nil
+		return fmt.Errorf("cmdDel() failed to load conf from cache %v: %q", args, err)
 	}
 
 	defer func() {
@@ -180,7 +180,7 @@ func cmdDel(args *skel.CmdArgs) error {
 
 	// https://github.com/kubernetes/kubernetes/pull/35240
 	if args.Netns == "" {
-		return nil
+		return fmt.Errorf("cmdDel() failed missing netns %v", args)
 	}
 
 	sm := sriov.NewSriovManager()
@@ -195,20 +195,20 @@ func cmdDel(args *skel.CmdArgs) error {
 			// IPAM resources
 			_, ok := err.(ns.NSPathNotExistErr)
 			if ok {
-				return nil
+				return fmt.Errorf("cmdDel() ok failed to open netns %v: %q", args, err)
 			}
 
-			return fmt.Errorf("failed to open netns %s: %q", netns, err)
+			return fmt.Errorf("cmdDel() failed to open netns %v: %q", args, err)
 		}
 		defer netns.Close()
 
 		if err = sm.ReleaseVF(netConf, args.IfName, args.ContainerID, netns); err != nil {
-			return err
+			return fmt.Errorf("cmdDel() error releasing VF %v: %q", args, err)
 		}
 	}
 
 	if err := sm.ResetVFConfig(netConf); err != nil {
-		return fmt.Errorf("cmdDel() error reseting VF: %q", err)
+		return fmt.Errorf("cmdDel() error resetting VF %v: %q", args, err)
 	}
 
 	return nil
